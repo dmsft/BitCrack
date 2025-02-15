@@ -28,7 +28,12 @@ CudaKeySearchDevice::CudaKeySearchDevice(int device, int threads, int pointsPerT
         throw KeySearchException(ex.msg);
     }
 
-    if (threads <= 0 || threads % 32 != 0) {
+    // if threads are specified then use it, otherwise from device caps
+    int num_threads = info.cores;
+    if (0 != threads)
+        num_threads = threads;
+
+    if (num_threads <= 0 || num_threads % 32 != 0) {
         throw KeySearchException("The number of threads must be a multiple of 32");
     }
 
@@ -40,11 +45,11 @@ CudaKeySearchDevice::CudaKeySearchDevice(int device, int threads, int pointsPerT
     // blocks, devide the threads evenly among the multi-processors
     if (blocks == 0)
     {
-        if (threads % info.mpCount != 0) {
+        if (num_threads % info.mpCount != 0) {
             throw KeySearchException("The number of threads must be a multiple of " + util::format("%d", info.mpCount));
         }
 
-        _threads = threads / info.mpCount;
+        _threads = num_threads / info.mpCount;
         _blocks = info.mpCount;
 
         while (_threads > 512) {
@@ -54,7 +59,7 @@ CudaKeySearchDevice::CudaKeySearchDevice(int device, int threads, int pointsPerT
     }
     else
     {
-        _threads = threads;
+        _threads = num_threads;
         _blocks = blocks;
     }
 
@@ -90,7 +95,6 @@ void CudaKeySearchDevice::init(const secp256k1::uint256 &start, int compression,
     secp256k1::ecpoint p = secp256k1::multiplyPoint(secp256k1::uint256((uint64_t)_threads * _blocks * _pointsPerThread) * _stride, g);
 
     cudaCall(_resultList.init(sizeof(CudaDeviceResult), 16));
-
     cudaCall(setIncrementorPoint(p.x, p.y));
 }
 

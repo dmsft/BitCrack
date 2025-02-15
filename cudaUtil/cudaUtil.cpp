@@ -52,6 +52,9 @@ cuda::CudaDeviceInfo cuda::getDeviceInfo(int device)
 	case 7:
 		cores = 64;
 		break;
+	case 8:
+		cores = 128;
+		break;
     default:
         cores = 8;
         break;
@@ -65,10 +68,9 @@ cuda::CudaDeviceInfo cuda::getDeviceInfo(int device)
 std::vector<cuda::CudaDeviceInfo> cuda::getDevices()
 {
 	int count = getDeviceCount();
-
 	std::vector<CudaDeviceInfo> devList;
 
-	for(int device = 0; device < count; device++) {
+	for (int device = 0; device < count; device++) {
 		devList.push_back(getDeviceInfo(device));
 	}
 
