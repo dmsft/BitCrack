@@ -47,7 +47,6 @@ __device__ void doRMD160FinalRound(const unsigned int hIn[5], unsigned int hOut[
 cudaError_t allocateChainBuf(unsigned int count)
 {
     cudaError_t err = cudaMalloc(&_chainBufferPtr, count * sizeof(unsigned int) * 8);
-
     if(err) {
         return err;
     }
