@@ -9,24 +9,22 @@
 #include "KeySearchDevice.h"
 
 
-class KeyFinder {
+class KeyFinder
+{
 
 private:
 
     KeySearchDevice *_device;
-
 	unsigned int _compression;
-
 	std::set<KeySearchTarget> _targets;
-
+	
 	uint64_t _statusInterval;
-
-    secp256k1::uint256 _stride = 1;
 	uint64_t _iterCount;
 	uint64_t _total;
 	uint64_t _totalTime;
 
-    secp256k1::uint256 _startKey;
+	secp256k1::uint256 _stride = 1;
+	secp256k1::uint256 _startKey;
     secp256k1::uint256 _endKey;
 
 	// Each index of each thread gets a flag to indicate if it found a valid hash
@@ -34,7 +32,6 @@ private:
 
 	void(*_resultCallback)(KeySearchResult);
 	void(*_statusCallback)(KeySearchStatus);
-
 
 	static void defaultResultCallback(KeySearchResult result);
 	static void defaultStatusCallback(KeySearchStatus status);

@@ -8,10 +8,10 @@
 #include "clutil.h"
 #endif
 
+
 std::vector<DeviceManager::DeviceInfo> DeviceManager::getDevices()
 {
     int deviceId = 0;
-
     std::vector<DeviceManager::DeviceInfo> devices;
 
 #ifdef BUILD_CUDA
@@ -19,7 +19,8 @@ std::vector<DeviceManager::DeviceInfo> DeviceManager::getDevices()
     try {
         std::vector<cuda::CudaDeviceInfo> cudaDevices = cuda::getDevices();
 
-        for(int i = 0; i < cudaDevices.size(); i++) {
+        for (int i = 0; i < cudaDevices.size(); i++)
+        {
             DeviceManager::DeviceInfo device;
             device.name = cudaDevices[i].name;
             device.type = DeviceType::CUDA;

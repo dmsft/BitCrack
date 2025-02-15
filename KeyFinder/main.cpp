@@ -39,17 +39,11 @@ typedef struct _RunConfig{
     unsigned int pointsPerThread = 0;
     
     int compression = PointCompressionType::COMPRESSED;
- 
     std::vector<std::string> targets;
-
     std::string targetsFile = "";
-
     std::string checkpointFile = "";
-
     int device = 0;
-
     std::string resultsFile = "";
-
     uint64_t totalkeys = 0;
     unsigned int elapsed = 0;
     secp256k1::uint256 stride = 1;
@@ -221,21 +215,25 @@ void usage()
 /**
  Finds default parameters depending on the device
  */
-typedef struct {
+typedef struct
+{
 	int threads;
 	int blocks;
 	int pointsPerThread;
-}DeviceParameters;
+} DeviceParameters;
+
 
 DeviceParameters getDefaultParameters(const DeviceManager::DeviceInfo &device)
 {
 	DeviceParameters p;
+
 	p.threads = 256;
     p.blocks = 32;
 	p.pointsPerThread = 32;
 
 	return p;
 }
+
 
 static KeySearchDevice *getDeviceContext(DeviceManager::DeviceInfo &device, int blocks, int threads, int pointsPerThread)
 {
@@ -253,6 +251,7 @@ static KeySearchDevice *getDeviceContext(DeviceManager::DeviceInfo &device, int 
 
     return NULL;
 }
+
 
 static void printDeviceList(const std::vector<DeviceManager::DeviceInfo> &devices)
 {
@@ -366,9 +365,10 @@ void readCheckpointFile()
     _config.totalkeys = (_config.nextKey - _config.startKey).toUint64();
 }
 
+
 int run()
 {
-    if(_config.device < 0 || _config.device >= _devices.size()) {
+    if (_config.device < 0 || _config.device >= _devices.size()) {
         Logger::log(LogLevel::Error, "device " + util::format(_config.device) + " does not exist");
         return 1;
     }
@@ -379,46 +379,44 @@ int run()
     Logger::log(LogLevel::Info, "Counting by: " + _config.stride.toString());
 
     try {
-
         _lastUpdate = util::getSystemTime();
         _startTime = util::getSystemTime();
 
         // Use default parameters if they have not been set
-        DeviceParameters params = getDefaultParameters(_devices[_config.device]);
+        /*DeviceParameters params = getDefaultParameters(_devices[_config.device]);
 
-        if(_config.blocks == 0) {
+        if (_config.blocks == 0) {
             _config.blocks = params.blocks;
         }
 
-        if(_config.threads == 0) {
+        if (_config.threads == 0) {
             _config.threads = params.threads;
-        }
+        }*/
 
-        if(_config.pointsPerThread == 0) {
-            _config.pointsPerThread = params.pointsPerThread;
+        if (_config.pointsPerThread == 0) {
+            _config.pointsPerThread = 32;
         }
 
         // Get device context
-        KeySearchDevice *d = getDeviceContext(_devices[_config.device], _config.blocks, _config.threads, _config.pointsPerThread);
+        KeySearchDevice *devctx = getDeviceContext(_devices[_config.device], _config.blocks, _config.threads, _config.pointsPerThread);
 
-        KeyFinder f(_config.nextKey, _config.endKey, _config.compression, d, _config.stride);
+        KeyFinder finder(_config.nextKey, _config.endKey, _config.compression, devctx, _config.stride);
+        finder.setResultCallback(resultCallback);
+        finder.setStatusInterval(_config.statusInterval);
+        finder.setStatusCallback(statusCallback);
+        finder.init();
 
-        f.setResultCallback(resultCallback);
-        f.setStatusInterval(_config.statusInterval);
-        f.setStatusCallback(statusCallback);
-
-        f.init();
-
-        if(!_config.targetsFile.empty()) {
-            f.setTargets(_config.targetsFile);
+        if (!_config.targetsFile.empty()) {
+            finder.setTargets(_config.targetsFile);
         } else {
-            f.setTargets(_config.targets);
+            finder.setTargets(_config.targets);
         }
 
-        f.run();
-
-        delete d;
-    } catch(KeySearchException ex) {
+        finder.run();
+        delete devctx;
+    }
+    catch(KeySearchException ex)
+    {
         Logger::log(LogLevel::Info, "Error: " + ex.msg);
         return 1;
     }
@@ -473,7 +471,7 @@ int main(int argc, char **argv)
     uint32_t numShares = 0;
 
     // Catch --help first
-    for(int i = 1; i < argc; i++) {
+    for (int i = 1; i < argc; i++) {
         if(std::string(argv[i]) == "--help") {
             usage();
             return 0;
@@ -481,24 +479,24 @@ int main(int argc, char **argv)
     }
 
     // Check for supported devices
-    try {
+    try
+    {
         _devices = DeviceManager::getDevices();
-
-        if(_devices.size() == 0) {
+        if (_devices.size() == 0) {
             Logger::log(LogLevel::Error, "No devices available");
             return 1;
         }
-    } catch(DeviceManager::DeviceManagerException ex) {
+    } catch(DeviceManager::DeviceManagerException ex)
+    {
         Logger::log(LogLevel::Error, "Error detecting devices: " + ex.msg);
         return 1;
     }
 
     // Check for arguments
-	if(argc == 1) {
+	if (argc == 1) {
 		usage();
 		return 0;
 	}
-
 
 	CmdParse parser;
 	parser.add("-d", "--device", true);
@@ -526,8 +524,8 @@ int main(int argc, char **argv)
     }
 
     std::vector<OptArg> args = parser.getArgs();
-
-	for(unsigned int i = 0; i < args.size(); i++) {
+	for (unsigned int i = 0; i < args.size(); i++)
+    {
 		OptArg optArg = args[i];
 		std::string opt = args[i].option;
 
@@ -557,36 +555,41 @@ int main(int argc, char **argv)
                 listDevices = true;
             } else if(optArg.equals("", "--continue")) {
                 _config.checkpointFile = optArg.arg;
-            } else if(optArg.equals("", "--keyspace")) {
+            } else if(optArg.equals("", "--keyspace"))
+            {
                 secp256k1::uint256 start;
                 secp256k1::uint256 end;
 
                 parseKeyspace(optArg.arg, start, end);
 
-                if(start.cmp(secp256k1::N) > 0) {
+                if (start.cmp(secp256k1::N) > 0) {
                     throw std::string("argument is out of range");
                 }
-                if(start.isZero()) {
-                    throw std::string("argument is out of range");
-                }
-
-                if(end.cmp(secp256k1::N) > 0) {
+                if (start.isZero()) {
                     throw std::string("argument is out of range");
                 }
 
-                if(start.cmp(end) > 0) {
+                if (end.cmp(secp256k1::N) > 0) {
+                    throw std::string("argument is out of range");
+                }
+
+                if (start.cmp(end) > 0) {
                     throw std::string("Invalid argument");
                 }
 
                 _config.startKey = start;
                 _config.nextKey = start;
                 _config.endKey = end;
-            } else if(optArg.equals("", "--share")) {
+            }
+            else if(optArg.equals("", "--share"))
+            {
                 if(!parseShare(optArg.arg, shareIdx, numShares)) {
                     throw std::string("Invalid argument");
                 }
                 optShares = true;
-            } else if(optArg.equals("", "--stride")) {
+            }
+            else if (optArg.equals("", "--stride"))
+            {
                 try {
                     _config.stride = secp256k1::uint256(optArg.arg);
                 } catch(...) {
@@ -610,13 +613,13 @@ int main(int argc, char **argv)
 		}
 	}
 
-    if(listDevices) {
+    if (listDevices) {
         printDeviceList(_devices);
         return 0;
     }
 
 	// Verify device exists
-	if(_config.device < 0 || _config.device >= _devices.size()) {
+	if (_config.device < 0 || _config.device >= _devices.size()) {
 		Logger::log(LogLevel::Error, "device " + util::format(_config.device) + " does not exist");
 		return 1;
 	}
@@ -626,14 +629,14 @@ int main(int argc, char **argv)
 
     // If there are no operands, then we must be reading from a file, otherwise
     // expect addresses on the commandline
-	if(ops.size() == 0) {
+	if (ops.size() == 0) {
 		if(_config.targetsFile.length() == 0) {
 			Logger::log(LogLevel::Error, "Missing arguments");
 			usage();
 			return 1;
 		}
 	} else {
-		for(unsigned int i = 0; i < ops.size(); i++) {
+		for (unsigned int i = 0; i < ops.size(); i++) {
             if(!Address::verifyAddress(ops[i])) {
                 Logger::log(LogLevel::Error, "Invalid address '" + ops[i] + "'");
                 return 1;
@@ -643,15 +646,14 @@ int main(int argc, char **argv)
 	}
     
     // Calculate where to start and end in the keyspace when the --share option is used
-    if(optShares) {
+    if (optShares)
+    {
         Logger::log(LogLevel::Info, "Share " + util::format(shareIdx) + " of " + util::format(numShares));
+        
         secp256k1::uint256 numKeys = _config.endKey - _config.nextKey + 1;
-
         secp256k1::uint256 diff = numKeys.mod(numShares);
         numKeys = numKeys - diff;
-
         secp256k1::uint256 shareSize = numKeys.div(numShares);
-
         secp256k1::uint256 startPos = _config.nextKey + (shareSize * (shareIdx - 1));
 
         if(shareIdx < numShares) {

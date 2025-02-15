@@ -5,46 +5,51 @@
 #include <string>
 #include <vector>
 
-namespace DeviceManager {
+namespace DeviceManager
+{
 
-class DeviceManagerException {
-
-public:
-    std::string msg;
-
-    DeviceManagerException(const std::string &msg)
+    class DeviceManagerException
     {
-        this->msg = msg;
-    }
-};
 
-class DeviceType {
-public:
-    enum {
-        CUDA = 0,
-        OpenCL
+        public:
+            std::string msg;
+
+            DeviceManagerException(const std::string &msg)
+            {
+                this->msg = msg;
+            }
     };
-};
 
 
-typedef struct {
-    int type;
-    int id;
+    class DeviceType
+    {
+        public:
+            enum {
+                CUDA = 0,
+                OpenCL
+            };
+    };
 
-    // General device info
-    uint64_t physicalId;
-    std::string name;
-    uint64_t memory;
-    int computeUnits;
 
-    // CUDA device info
-    int cudaMajor;
-    int cudaMinor;
-    int cudaCores;
-}DeviceInfo;
+    typedef struct
+    {
+        int type;
+        int id;
 
-std::vector<DeviceInfo> getDevices();
+        // General device info
+        uint64_t physicalId;
+        std::string name;
+        uint64_t memory;
+        int computeUnits;
 
+        // CUDA device info
+        int cudaMajor;
+        int cudaMinor;
+        int cudaCores;
+    } DeviceInfo;
+
+ 
+    std::vector<DeviceInfo> getDevices();
 }
 
 

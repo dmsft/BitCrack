@@ -4,19 +4,16 @@
 cuda::CudaDeviceInfo cuda::getDeviceInfo(int device)
 {
 	cuda::CudaDeviceInfo devInfo;
-
 	cudaDeviceProp properties;
 	cudaError_t err = cudaSuccess;
 
 	err = cudaSetDevice(device);
-
-	if(err) {
+	if (err) {
 		throw cuda::CudaException(err);
 	}
 
 	err = cudaGetDeviceProperties(&properties, device);
-	
-	if(err) {
+	if (err) {
 		throw cuda::CudaException(err);
 	}
 

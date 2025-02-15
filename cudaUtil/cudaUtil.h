@@ -18,7 +18,8 @@ namespace cuda {
 		uint64_t mem;
 		std::string name;
 
-	}CudaDeviceInfo;
+	} CudaDeviceInfo;
+
 
 	class CudaException
 	{

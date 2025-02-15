@@ -27,16 +27,13 @@ __global__ void multiplyStepKernel(const unsigned int *privateKeys, int pointsPe
 
 int CudaDeviceKeys::getIndex(int block, int thread, int idx)
 {
-	// Total number of threads
 	int totalThreads = _blocks * _threads;
-
 	int base = idx * totalThreads;
-
-	// Global ID of the current thread
 	int threadId = block * _threads + thread;
 
 	return base + threadId;
 }
+
 
 void CudaDeviceKeys::splatBigInt(unsigned int *dest, int block, int thread, int idx, const secp256k1::uint256 &i)
 {
@@ -46,16 +43,16 @@ void CudaDeviceKeys::splatBigInt(unsigned int *dest, int block, int thread, int 
 
 	int totalThreads = _blocks * _threads;
 	int threadId = block * _threads + thread;
-
 	int base = idx * _blocks * _threads * 8;
-
 	int index = base + threadId;
 
-	for(int k = 0; k < 8; k++) {
+	for (int k = 0; k < 8; k++)
+	{
 		dest[index] = value[k];
 		index += totalThreads;
 	}
 }
+
 
 secp256k1::uint256 CudaDeviceKeys::readBigInt(unsigned int *src, int block, int thread, int idx)
 {
@@ -85,7 +82,6 @@ the batch inversion operation
 cudaError_t CudaDeviceKeys::allocateChainBuf(unsigned int count)
 {
 	cudaError_t err = cudaMalloc(&_devChain, count * sizeof(unsigned int) * 8);
-
 	if(err) {
 		return err;
 	}
@@ -93,25 +89,25 @@ cudaError_t CudaDeviceKeys::allocateChainBuf(unsigned int count)
 	return err;
 }
 
+
 cudaError_t CudaDeviceKeys::initializeBasePoints()
 {
 	// generate a table of points G, 2G, 4G, 8G...(2^255)G
 	std::vector<secp256k1::ecpoint> table;
-
 	table.push_back(secp256k1::G());
-	for(int i = 1; i < 256; i++) {
-
+	
+	for (int i = 1; i < 256; i++)
+	{
 		secp256k1::ecpoint p = doublePoint(table[i - 1]);
-		if(!pointExists(p)) {
+		if (!pointExists(p)) {
 			throw std::string("Point does not exist!");
 		}
+
 		table.push_back(p);
 	}
 
 	unsigned int count = 256;
-
 	cudaError_t err = cudaMalloc(&_devBasePointX, sizeof(unsigned int) * count * 8);
-
 	if(err) {
 		return err;
 	}
@@ -124,13 +120,15 @@ cudaError_t CudaDeviceKeys::initializeBasePoints()
 	unsigned int *tmpX = new unsigned int[count * 8];
 	unsigned int *tmpY = new unsigned int[count * 8];
 
-	for(int i = 0; i < 256; i++) {
+	for (int i = 0; i < 256; i++)
+	{
 		unsigned int bufX[8];
 		unsigned int bufY[8];
 		table[i].x.exportWords(bufX, 8, secp256k1::uint256::BigEndian);
 		table[i].y.exportWords(bufY, 8, secp256k1::uint256::BigEndian);
 
-		for(int j = 0; j < 8; j++) {
+		for (int j = 0; j < 8; j++)
+		{
 			tmpX[i * 8 + j] = bufX[j];
 			tmpY[i * 8 + j] = bufY[j];
 		}
@@ -140,21 +138,20 @@ cudaError_t CudaDeviceKeys::initializeBasePoints()
 
 	delete[] tmpX;
 
-	if(err) {
+	if (err) {
 		delete[] tmpY;
 		return err;
 	}
 
 	err = cudaMemcpy(_devBasePointY, tmpY, count * 8 * sizeof(unsigned int), cudaMemcpyHostToDevice);
-
 	delete[] tmpY;
 
 	return err;
 }
 
+
 cudaError_t CudaDeviceKeys::initializePublicKeys(size_t count)
 {
-
 	// Allocate X array
 	cudaError_t err = cudaMalloc(&_devX, sizeof(unsigned int) * count * 8);
 	if(err) {
@@ -189,18 +186,21 @@ cudaError_t CudaDeviceKeys::initializePublicKeys(size_t count)
 	return err;
 }
 
-cudaError_t CudaDeviceKeys::init(int blocks, int threads, int pointsPerThread, const std::vector<secp256k1::uint256> &privateKeys)
+
+cudaError_t CudaDeviceKeys::init(
+	int blocks,
+	int threads,
+	int pointsPerThread,
+	const std::vector<secp256k1::uint256> &privateKeys)
 {
 	_blocks = blocks;
 	_threads = threads;
 	_pointsPerThread = pointsPerThread;
-
 	size_t count = privateKeys.size();
 
 	// Allocate space for public keys on device
 	cudaError_t err = initializePublicKeys(count);
-
-	if(err) {
+	if (err) {
 		return err;
 	}
 
@@ -214,7 +214,6 @@ cudaError_t CudaDeviceKeys::init(int blocks, int threads, int pointsPerThread, c
 	if(err) {
 		return err;
 	}
-
 
 	// Clear private keys
 	err = cudaMemset(_devPrivate, 0, sizeof(unsigned int) * count * 8);
@@ -230,12 +229,11 @@ cudaError_t CudaDeviceKeys::init(int blocks, int threads, int pointsPerThread, c
 	// Copy private keys to system memory buffer
 	unsigned int *tmp = new unsigned int[count * 8];
 
-	for(int block = 0; block < _blocks; block++) {
-		for(int thread = 0; thread < _threads; thread++) {
-			for(int idx = 0; idx < _pointsPerThread; idx++) {
-
+	for (int block = 0; block < _blocks; block++) {
+		for (int thread = 0; thread < _threads; thread++) {
+			for (int idx = 0; idx < _pointsPerThread; idx++)
+			{
 				int index = getIndex(block, thread, idx);
-
 				splatBigInt(tmp, block, thread, idx, privateKeys[index]);
 			}
 		}
@@ -243,15 +241,15 @@ cudaError_t CudaDeviceKeys::init(int blocks, int threads, int pointsPerThread, c
 
 	// Copy private keys to device memory
 	err = cudaMemcpy(_devPrivate, tmp, count * sizeof(unsigned int) * 8, cudaMemcpyHostToDevice);
-
 	delete[] tmp;
-
-	if(err) {
+	
+	if (err) {
 		return err;
 	}
 
 	return cudaSuccess;
 }
+
 
 void CudaDeviceKeys::clearPublicKeys()
 {

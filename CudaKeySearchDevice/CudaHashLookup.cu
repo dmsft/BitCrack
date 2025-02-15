@@ -287,14 +287,21 @@ __device__ bool checkHash(const unsigned int hash[5])
 {
 	bool foundMatch = false;
 
-	if(*_USE_BLOOM_FILTER == 1) {
+	if (*_USE_BLOOM_FILTER == 1)
+	{
 		return checkBloomFilter(hash);
-	} else if(*_USE_BLOOM_FILTER == 2) {
+	}
+	else if (*_USE_BLOOM_FILTER == 2)
+	{
 		return checkBloomFilter64(hash);
-	} else {
-		for(int j = 0; j < *_NUM_TARGET_HASHES; j++) {
+	}
+	else
+	{
+		for (int j = 0; j < *_NUM_TARGET_HASHES; j++)
+		{
 			bool equal = true;
-			for(int i = 0; i < 5; i++) {
+		
+			for (int i = 0; i < 5; i++) {
 				equal &= (hash[i] == _TARGET_HASH[j][i]);
 			}
 

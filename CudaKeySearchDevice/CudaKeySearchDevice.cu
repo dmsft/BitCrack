@@ -92,16 +92,16 @@ cudaError_t setIncrementorPoint(const secp256k1::uint256 &x, const secp256k1::ui
 __device__ void hashPublicKey(const unsigned int *x, const unsigned int *y, unsigned int *digestOut)
 {
     unsigned int hash[8];
-
     sha256PublicKey(x, y, hash);
 
     // Swap to little-endian
-    for(int i = 0; i < 8; i++) {
+    for (int i = 0; i < 8; i++) {
         hash[i] = endian(hash[i]);
     }
 
     ripemd160sha256NoFinal(hash, digestOut);
 }
+
 
 __device__ void hashPublicKeyCompressed(const unsigned int *x, unsigned int yParity, unsigned int *digestOut)
 {
@@ -137,6 +137,7 @@ __device__ void setResultFound(int idx, bool compressed, unsigned int x[8], unsi
     atomicListAdd(&r, sizeof(r));
 }
 
+
 __device__ void doIteration(int pointsPerThread, int compression)
 {
     unsigned int *chain = _CHAIN[0];
@@ -145,28 +146,29 @@ __device__ void doIteration(int pointsPerThread, int compression)
 
     // Multiply together all (_Gx - x) and then invert
     unsigned int inverse[8] = {0,0,0,0,0,0,0,1};
-    for(int i = 0; i < pointsPerThread; i++) {
+    for (int i = 0; i < pointsPerThread; i++)
+    {
         unsigned int x[8];
-
         unsigned int digest[5];
-
         readInt(xPtr, i, x);
 
-        if(compression == PointCompressionType::UNCOMPRESSED || compression == PointCompressionType::BOTH) {
+        if (compression == PointCompressionType::UNCOMPRESSED || compression == PointCompressionType::BOTH)
+        {
             unsigned int y[8];
             readInt(yPtr, i, y);
-
             hashPublicKey(x, y, digest);
 
-            if(checkHash(digest)) {
+            if (checkHash(digest)) {
                 setResultFound(i, false, x, y, digest);
             }
         }
 
-        if(compression == PointCompressionType::COMPRESSED || compression == PointCompressionType::BOTH) {
+        if (compression == PointCompressionType::COMPRESSED || compression == PointCompressionType::BOTH)
+        {
             hashPublicKeyCompressed(x, readIntLSW(yPtr, i), digest);
 
-            if(checkHash(digest)) {
+            if (checkHash(digest))
+            {
                 unsigned int y[8];
                 readInt(yPtr, i, y);
                 setResultFound(i, true, x, y, digest);
@@ -178,17 +180,16 @@ __device__ void doIteration(int pointsPerThread, int compression)
 
     doBatchInverse(inverse);
 
-    for(int i = pointsPerThread - 1; i >= 0; i--) {
-
+    for (int i = pointsPerThread - 1; i >= 0; i--)
+    {
         unsigned int newX[8];
         unsigned int newY[8];
-
         completeBatchAdd(_INC_X, _INC_Y, xPtr, yPtr, i, i, chain, inverse, newX, newY);
-
         writeInt(xPtr, i, newX);
         writeInt(yPtr, i, newY);
     }
 }
+
 
 __device__ void doIterationWithDouble(int pointsPerThread, int compression)
 {
