@@ -15,11 +15,10 @@
 #include "CudaAtomicList.cuh"
 #include "CudaDeviceKeys.cuh"
 
+
 __constant__ unsigned int _INC_X[8];
-
 __constant__ unsigned int _INC_Y[8];
-
-__constant__ unsigned int *_CHAIN[1];
+__constant__ unsigned int* _CHAIN[1];
 
 static unsigned int *_chainBufferPtr = NULL;
 
@@ -34,9 +33,8 @@ __device__ void doRMD160FinalRound(const unsigned int hIn[5], unsigned int hOut[
         0xc3d2e1f0
     };
 
-    for(int i = 0; i < 5; i++) {
+    for (int i = 0; i < 5; i++)
         hOut[i] = endian(hIn[i] + iv[(i + 1) % 5]);
-    }
 }
 
 
@@ -47,25 +45,27 @@ __device__ void doRMD160FinalRound(const unsigned int hIn[5], unsigned int hOut[
 cudaError_t allocateChainBuf(unsigned int count)
 {
     cudaError_t err = cudaMalloc(&_chainBufferPtr, count * sizeof(unsigned int) * 8);
-    if(err) {
+    if (err)
         return err;
-    }
 
     err = cudaMemcpyToSymbol(_CHAIN, &_chainBufferPtr, sizeof(unsigned int *));
-    if(err) {
+    if (err)
         cudaFree(_chainBufferPtr);
-    }
 
     return err;
 }
 
+
+
 void cleanupChainBuf()
 {
-    if(_chainBufferPtr != NULL) {
+    if (_chainBufferPtr != NULL)
+    {
         cudaFree(_chainBufferPtr);
         _chainBufferPtr = NULL;
     }
 }
+
 
 /**
  *Sets the EC point which all points will be incremented by
@@ -79,9 +79,8 @@ cudaError_t setIncrementorPoint(const secp256k1::uint256 &x, const secp256k1::ui
     y.exportWords(yWords, 8, secp256k1::uint256::BigEndian);
 
     cudaError_t err = cudaMemcpyToSymbol(_INC_X, xWords, sizeof(unsigned int) * 8);
-    if(err) {
+    if (err)
         return err;
-    }
 
     return cudaMemcpyToSymbol(_INC_Y, yWords, sizeof(unsigned int) * 8);
 }
@@ -94,9 +93,8 @@ __device__ void hashPublicKey(const unsigned int *x, const unsigned int *y, unsi
     sha256PublicKey(x, y, hash);
 
     // Swap to little-endian
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 8; i++)
         hash[i] = endian(hash[i]);
-    }
 
     ripemd160sha256NoFinal(hash, digestOut);
 }
@@ -105,13 +103,11 @@ __device__ void hashPublicKey(const unsigned int *x, const unsigned int *y, unsi
 __device__ void hashPublicKeyCompressed(const unsigned int *x, unsigned int yParity, unsigned int *digestOut)
 {
     unsigned int hash[8];
-
     sha256PublicKeyCompressed(x, yParity, hash);
 
     // Swap to little-endian
-    for(int i = 0; i < 8; i++) {
+    for (int i = 0; i < 8; i++)
         hash[i] = endian(hash[i]);
-    }
 
     ripemd160sha256NoFinal(hash, digestOut);
 }
@@ -137,6 +133,12 @@ __device__ void setResultFound(int idx, bool compressed, unsigned int x[8], unsi
 }
 
 
+/// <summary>
+/// Actual key finder work kernel.
+/// </summary>
+/// <param name="pointsPerThread"></param>
+/// <param name="compression"></param>
+/// <returns></returns>
 __device__ void doIteration(int pointsPerThread, int compression)
 {
     unsigned int *chain = _CHAIN[0];
@@ -178,11 +180,11 @@ __device__ void doIteration(int pointsPerThread, int compression)
     }
 
     doBatchInverse(inverse);
-
     for (int i = pointsPerThread - 1; i >= 0; i--)
     {
         unsigned int newX[8];
         unsigned int newY[8];
+
         completeBatchAdd(_INC_X, _INC_Y, xPtr, yPtr, i, i, chain, inverse, newX, newY);
         writeInt(xPtr, i, newX);
         writeInt(yPtr, i, newY);

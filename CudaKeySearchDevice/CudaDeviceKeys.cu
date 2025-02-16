@@ -82,16 +82,22 @@ the batch inversion operation
 cudaError_t CudaDeviceKeys::allocateChainBuf(unsigned int count)
 {
 	cudaError_t err = cudaMalloc(&_devChain, count * sizeof(unsigned int) * 8);
-	if(err) {
+	if (err)
 		return err;
-	}
 
 	return err;
 }
 
 
+/// <summary>
+/// Generate points and alloc+copy to device.
+/// </summary>
+/// <returns></returns>
 cudaError_t CudaDeviceKeys::initializeBasePoints()
 {
+	unsigned int count = 256;
+	int len = sizeof(unsigned int) * count * 8;
+
 	// generate a table of points G, 2G, 4G, 8G...(2^255)G
 	std::vector<secp256k1::ecpoint> table;
 	table.push_back(secp256k1::G());
@@ -99,23 +105,19 @@ cudaError_t CudaDeviceKeys::initializeBasePoints()
 	for (int i = 1; i < 256; i++)
 	{
 		secp256k1::ecpoint p = doublePoint(table[i - 1]);
-		if (!pointExists(p)) {
+		if (!pointExists(p))
 			throw std::string("Point does not exist!");
-		}
 
 		table.push_back(p);
 	}
 
-	unsigned int count = 256;
-	cudaError_t err = cudaMalloc(&_devBasePointX, sizeof(unsigned int) * count * 8);
-	if(err) {
+	cudaError_t err = cudaMalloc(&_devBasePointX, len);
+	if (err)
 		return err;
-	}
 
-	err = cudaMalloc(&_devBasePointY, sizeof(unsigned int) * count * 8);
-	if(err) {
+	err = cudaMalloc(&_devBasePointY, len);
+	if (err)
 		return err;
-	}
 
 	unsigned int *tmpX = new unsigned int[count * 8];
 	unsigned int *tmpY = new unsigned int[count * 8];
@@ -134,8 +136,7 @@ cudaError_t CudaDeviceKeys::initializeBasePoints()
 		}
 	}
 
-	err = cudaMemcpy(_devBasePointX, tmpX, count * 8 * sizeof(unsigned int), cudaMemcpyHostToDevice);
-
+	err = cudaMemcpy(_devBasePointX, tmpX, len, cudaMemcpyHostToDevice);
 	delete[] tmpX;
 
 	if (err) {
@@ -143,43 +144,45 @@ cudaError_t CudaDeviceKeys::initializeBasePoints()
 		return err;
 	}
 
-	err = cudaMemcpy(_devBasePointY, tmpY, count * 8 * sizeof(unsigned int), cudaMemcpyHostToDevice);
+	err = cudaMemcpy(_devBasePointY, tmpY, len, cudaMemcpyHostToDevice);
 	delete[] tmpY;
 
 	return err;
 }
 
 
+/// <summary>
+/// Allocate device memory for the amount of keys.
+/// </summary>
+/// <param name="count"></param>
+/// <returns></returns>
 cudaError_t CudaDeviceKeys::initializePublicKeys(size_t count)
 {
+	int len = sizeof(unsigned int) * count * 8;
+
 	// Allocate X array
-	cudaError_t err = cudaMalloc(&_devX, sizeof(unsigned int) * count * 8);
-	if(err) {
+	cudaError_t err = cudaMalloc(&_devX, len);
+	if (err)
 		return err;
-	}
 
 	// Clear X array
-	err = cudaMemset(_devX, -1, sizeof(unsigned int) * count * 8);
-	if(err) {
+	err = cudaMemset(_devX, -1, len);
+	if (err)
 		return err;
-	}
 
 	// Allocate Y array
-	err = cudaMalloc(&_devY, sizeof(unsigned int) * count * 8);
-	if(err) {
+	err = cudaMalloc(&_devY, len);
+	if (err)
 		return err;
-	}
 
 	// Clear Y array
-	err = cudaMemset(_devY, -1, sizeof(unsigned int) * count * 8);
-	if(err) {
+	err = cudaMemset(_devY, -1, len);
+	if (err)
 		return err;
-	}
 
 	err = cudaMemcpyToSymbol(_xPtr, &_devX, sizeof(unsigned int *));
-	if(err) {
+	if (err)
 		return err;
-	}
 
 	err = cudaMemcpyToSymbol(_yPtr, &_devY, sizeof(unsigned int *));
 	
@@ -197,34 +200,30 @@ cudaError_t CudaDeviceKeys::init(
 	_threads = threads;
 	_pointsPerThread = pointsPerThread;
 	size_t count = privateKeys.size();
+	int len = sizeof(unsigned int) * count * 8;
 
 	// Allocate space for public keys on device
 	cudaError_t err = initializePublicKeys(count);
-	if (err) {
+	if (err)
 		return err;
-	}
 
 	err = initializeBasePoints();
-	if(err) {
+	if (err)
 		return err;
-	}
 
 	// Allocate private keys on device
-	err = cudaMalloc(&_devPrivate, sizeof(unsigned int) * count * 8);
-	if(err) {
+	err = cudaMalloc(&_devPrivate, len);
+	if (err)
 		return err;
-	}
 
 	// Clear private keys
-	err = cudaMemset(_devPrivate, 0, sizeof(unsigned int) * count * 8);
-	if(err) {
+	err = cudaMemset(_devPrivate, 0, len);
+	if (err)
 		return err;
-	}
 
 	err = allocateChainBuf(_threads * _blocks * _pointsPerThread);
-	if(err) {
+	if (err)
 		return err;
-	}
 
 	// Copy private keys to system memory buffer
 	unsigned int *tmp = new unsigned int[count * 8];
@@ -240,12 +239,11 @@ cudaError_t CudaDeviceKeys::init(
 	}
 
 	// Copy private keys to device memory
-	err = cudaMemcpy(_devPrivate, tmp, count * sizeof(unsigned int) * 8, cudaMemcpyHostToDevice);
+	err = cudaMemcpy(_devPrivate, tmp, len, cudaMemcpyHostToDevice);
 	delete[] tmp;
 	
-	if (err) {
+	if (err)
 		return err;
-	}
 
 	return cudaSuccess;
 }
@@ -273,27 +271,37 @@ void CudaDeviceKeys::clearPrivateKeys()
 	_devPrivate = NULL;
 }
 
+
 cudaError_t CudaDeviceKeys::doStep()
 {
+	// run CUDA
 	multiplyStepKernel <<<_blocks, _threads>>>(_devPrivate, _pointsPerThread, _step, _devChain, _devBasePointX, _devBasePointY);
 
 	// Wait for kernel to complete
     cudaError_t err = cudaDeviceSynchronize();
+
 	fflush(stdout);
 	_step++;
+
 	return err;
 }
 
-__global__ void multiplyStepKernel(const unsigned int *privateKeys, int pointsPerThread, int step, unsigned int *chain, const unsigned int *gxPtr, const unsigned int *gyPtr)
+
+__global__ void multiplyStepKernel(
+	const unsigned int *privateKeys,
+	int pointsPerThread,
+	int step,
+	unsigned int *chain,
+	const unsigned int *gxPtr,
+	const unsigned int *gyPtr)
 {
 	unsigned int *xPtr = ec::getXPtr();
-
 	unsigned int *yPtr = ec::getYPtr();
 
 	unsigned int gx[8];
 	unsigned int gy[8];
 
-	for(int i = 0; i < 8; i++) {
+	for (int i = 0; i < 8; i++) {
 		gx[i] = gxPtr[step * 8 + i];
 		gy[i] = gyPtr[step * 8 + i];
 	}
@@ -302,8 +310,8 @@ __global__ void multiplyStepKernel(const unsigned int *privateKeys, int pointsPe
 	unsigned int inverse[8] = { 0,0,0,0,0,0,0,1 };
 
 	int batchIdx = 0;
-	for(int i = 0; i < pointsPerThread; i++) {
-
+	for (int i = 0; i < pointsPerThread; i++)
+	{
 		unsigned int p[8];
 		readInt(privateKeys, i, p);
 		unsigned int bit = p[7 - step / 32] & 1 << ((step % 32));
@@ -311,8 +319,8 @@ __global__ void multiplyStepKernel(const unsigned int *privateKeys, int pointsPe
 		unsigned int x[8];
 		readInt(xPtr, i, x);
 
-		if(bit != 0) {
-			if(!isInfinity(x)) {
+		if (bit != 0) {
+			if (!isInfinity(x)) {
 				beginBatchAddWithDouble(gx, gy, xPtr, chain, i, batchIdx, inverse);
 				batchIdx++;
 			}
@@ -320,9 +328,8 @@ __global__ void multiplyStepKernel(const unsigned int *privateKeys, int pointsPe
 	}
 
 	doBatchInverse(inverse);
-
-	for(int i = pointsPerThread - 1; i >= 0; i--) {
-
+	for (int i = pointsPerThread - 1; i >= 0; i--)
+	{
 		unsigned int newX[8];
 		unsigned int newY[8];
 
@@ -332,14 +339,17 @@ __global__ void multiplyStepKernel(const unsigned int *privateKeys, int pointsPe
 
 		unsigned int x[8];
 		readInt(xPtr, i, x);
-
 		bool infinity = isInfinity(x);
 
-		if(bit != 0) {
-			if(!infinity) {
+		if (bit != 0)
+		{
+			if (!infinity)
+			{
 				batchIdx--;
 				completeBatchAddWithDouble(gx, gy, xPtr, yPtr, i, batchIdx, chain, inverse, newX, newY);
-			} else {
+			}
+			else
+			{
 				copyBigInt(gx, newX);
 				copyBigInt(gy, newY);
 			}
@@ -349,6 +359,7 @@ __global__ void multiplyStepKernel(const unsigned int *privateKeys, int pointsPe
 		}
 	}
 }
+
 
 bool CudaDeviceKeys::selfTest(const std::vector<secp256k1::uint256> &privateKeys)
 {

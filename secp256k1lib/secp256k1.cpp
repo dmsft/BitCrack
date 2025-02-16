@@ -713,23 +713,25 @@ ecpoint secp256k1::addPoints(const ecpoint &p1, const ecpoint &p2)
 	return sum;
 }
 
+
 ecpoint secp256k1::multiplyPoint(const uint256 &k, const ecpoint &p)
 {
 	ecpoint sum = pointAtInfinity();
 	ecpoint d = p;
 
-	for(int i = 0; i < 256; i++) {
+	for (int i = 0; i < 256; i++)
+	{
 		unsigned int mask = 1 << (i % 32);
 
-		if(k.v[i / 32] & mask) {
+		if (k.v[i / 32] & mask)
 			sum = addPoints(sum, d);
-		}
 
 		d = doublePoint(d);
 	}
 
 	return sum;
 }
+
 
 uint256 generatePrivateKey()
 {

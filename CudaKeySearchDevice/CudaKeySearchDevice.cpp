@@ -4,11 +4,14 @@
 #include "cudabridge.h"
 #include "AddressUtil.h"
 
+/// <summary>
+/// Check for error and throw with a CUDA message string.
+/// </summary>
+/// <param name="err"></param>
 void CudaKeySearchDevice::cudaCall(cudaError_t err)
 {
-    if(err) {
+    if (err) {
         std::string errStr = cudaGetErrorString(err);
-
         throw KeySearchException(errStr);
     }
 }
@@ -16,8 +19,12 @@ void CudaKeySearchDevice::cudaCall(cudaError_t err)
 
 CudaKeySearchDevice::CudaKeySearchDevice(int device, int threads, int pointsPerThread, int blocks)
 {
+    _compression = 0;
+    _iterations = 0;
+    _device = device;
+    _pointsPerThread = pointsPerThread;
     cuda::CudaDeviceInfo info;
-    
+
     try
     {
         info = cuda::getDeviceInfo(device);
@@ -32,7 +39,7 @@ CudaKeySearchDevice::CudaKeySearchDevice(int device, int threads, int pointsPerT
     int num_threads = info.cores;
     if (0 != threads)
         num_threads = threads;
-
+    
     if (num_threads <= 0 || num_threads % 32 != 0) {
         throw KeySearchException("The number of threads must be a multiple of 32");
     }
@@ -45,11 +52,12 @@ CudaKeySearchDevice::CudaKeySearchDevice(int device, int threads, int pointsPerT
     // blocks, devide the threads evenly among the multi-processors
     if (blocks == 0)
     {
-        if (num_threads % info.mpCount != 0) {
-            throw KeySearchException("The number of threads must be a multiple of " + util::format("%d", info.mpCount));
-        }
+        // printf("%i %i\n", num_threads, info.mpCount);
 
-        _threads = num_threads / info.mpCount;
+        // if (num_threads % info.mpCount != 0)
+        //    throw KeySearchException("The number of threads must be a multiple of " + util::format("%d", info.mpCount));
+
+        _threads = num_threads;
         _blocks = info.mpCount;
 
         while (_threads > 512) {
@@ -62,18 +70,13 @@ CudaKeySearchDevice::CudaKeySearchDevice(int device, int threads, int pointsPerT
         _threads = num_threads;
         _blocks = blocks;
     }
-
-    _iterations = 0;
-    _device = device;
-    _pointsPerThread = pointsPerThread;
 }
 
 
 void CudaKeySearchDevice::init(const secp256k1::uint256 &start, int compression, const secp256k1::uint256 &stride)
 {
-    if(start.cmp(secp256k1::N) >= 0) {
+    if (start.cmp(secp256k1::N) >= 0)
         throw KeySearchException("Starting key is out of range");
-    }
 
     _startExponent = start;
     _compression = compression;
@@ -103,7 +106,7 @@ void CudaKeySearchDevice::generateStartingPoints()
 {
     std::vector<secp256k1::uint256> exponents;
     uint64_t totalPoints = (uint64_t)_pointsPerThread * _threads * _blocks;
-    uint64_t totalMemory = totalPoints * 40;
+    uint64_t totalMemory = totalPoints * sizeof(secp256k1::uint256);
 
     Logger::log(
         LogLevel::Info,
@@ -115,18 +118,21 @@ void CudaKeySearchDevice::generateStartingPoints()
     secp256k1::uint256 privKey = _startExponent;
     exponents.push_back(privKey);
 
+    // generate sequential keys skipping every stride len
     for (uint64_t i = 1; i < totalPoints; i++)
     {
         privKey = privKey.add(_stride);
         exponents.push_back(privKey);
     }
 
+    // gen key points and copy to device
     cudaCall(_deviceKeys.init(_blocks, _threads, _pointsPerThread, exponents));
 
     // Show progress in 10% increments
     double pct = 10.0;
     for (int i = 1; i <= 256; i++)
     {
+        // sec256 work in cuda
         cudaCall(_deviceKeys.doStep());
 
         if (((double)i / 256.0) * 100.0 >= pct)
@@ -153,22 +159,23 @@ void CudaKeySearchDevice::setTargets(const std::set<KeySearchTarget> &targets)
     cudaCall(_targetLookup.setTargets(_targets));
 }
 
+
 void CudaKeySearchDevice::doStep()
 {
     uint64_t numKeys = (uint64_t)_blocks * _threads * _pointsPerThread;
 
-    try {
-        if(_iterations < 2 && _startExponent.cmp(numKeys) <= 0) {
+    try
+    {
+        if(_iterations < 2 && _startExponent.cmp(numKeys) <= 0)
             callKeyFinderKernel(_blocks, _threads, _pointsPerThread, true, _compression);
-        } else {
+        else
             callKeyFinderKernel(_blocks, _threads, _pointsPerThread, false, _compression);
-        }
-    } catch(cuda::CudaException ex) {
+    }
+    catch(cuda::CudaException ex) {
         throw KeySearchException(ex.msg);
     }
 
     getResultsInternal();
-
     _iterations++;
 }
 

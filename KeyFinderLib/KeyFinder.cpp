@@ -45,18 +45,16 @@ KeyFinder::~KeyFinder()
 
 void KeyFinder::setTargets(std::vector<std::string> &targets)
 {
-	if (targets.size() == 0) {
+	if (targets.size() == 0) 
 		throw KeySearchException("Requires at least 1 target");
-	}
 
 	_targets.clear();
 
 	// Convert each address from base58 encoded form to a 160-bit integer
 	for (unsigned int i = 0; i < targets.size(); i++)
 	{
-		if (!Address::verifyAddress(targets[i])) {
+		if (!Address::verifyAddress(targets[i]))
 			throw KeySearchException("Invalid address '" + targets[i] + "'");
-		}
 
 		KeySearchTarget t;
 		Base58::toHash160(targets[i], t.value);
@@ -137,7 +135,6 @@ void KeyFinder::setTargetsOnDevice()
 void KeyFinder::init()
 {
 	Logger::log(LogLevel::Info, "Initializing " + _device->getDeviceName());
-
     _device->init(_startKey, _compression, _stride);
 }
 
@@ -163,17 +160,16 @@ bool KeyFinder::isTargetInList(const unsigned int hash[5])
 
 void KeyFinder::run()
 {
-    uint64_t pointsPerIteration = _device->keysPerStep();
 	_running = true;
-	
-	util::Timer timer;
-	timer.start();
-
-	uint64_t prevIterCount = 0;
 	_totalTime = 0;
-
+	util::Timer timer;
+	uint64_t prevIterCount = 0;
+	uint64_t pointsPerIteration = _device->keysPerStep();
+	
+	timer.start();
 	while (_running)
 	{
+		// do the churn
         _device->doStep();
         _iterCount++;
 

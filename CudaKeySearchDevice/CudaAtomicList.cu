@@ -40,48 +40,42 @@ cudaError_t CudaAtomicList::init(unsigned int itemSize, unsigned int maxItems)
 	// The number of results found in the most recent kernel run
 	_countHostPtr = NULL;
 	cudaError_t err = cudaHostAlloc(&_countHostPtr, sizeof(unsigned int), cudaHostAllocMapped);
-	if(err) {
+	if (err)
 		goto end;
-	}
 
 	// Number of items in the list
 	_countDevPtr = NULL;
 	err = cudaHostGetDevicePointer(&_countDevPtr, _countHostPtr, 0);
-	if(err) {
+	if (err)
 		goto end;
-	}
 	*_countHostPtr = 0;
 
 	// Storage for results data
 	_hostPtr = NULL;
 	err = cudaHostAlloc(&_hostPtr, itemSize * maxItems, cudaHostAllocMapped);
-	if(err) {
+	if (err)
 		goto end;
-	}
 
 	// Storage for results data (device to host pointer)
 	_devPtr = NULL;
 	err = cudaHostGetDevicePointer(&_devPtr, _hostPtr, 0);
-
-	if(err) {
+	if(err)
 		goto end;
-	}
 
 	err = setListPtr(_devPtr, _countDevPtr);
 
 end:
-	if(err) {
+	if (err)
+	{
 		cudaFreeHost(_countHostPtr);
-
 		cudaFree(_countDevPtr);
-
 		cudaFreeHost(_hostPtr);
-
 		cudaFree(_devPtr);
 	}
 
 	return err;
 }
+
 
 unsigned int CudaAtomicList::size()
 {

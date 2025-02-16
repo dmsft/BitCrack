@@ -99,35 +99,34 @@ __device__ static void readInt(const unsigned int *ara, int idx, unsigned int x[
 
 __device__ static unsigned int readIntLSW(const unsigned int *ara, int idx)
 {
-	int totalThreads = gridDim.x * blockDim.x;
-
-	int base = idx * totalThreads * 8;
-
 	int threadId = blockDim.x * blockIdx.x + threadIdx.x;
-
+	int totalThreads = gridDim.x * blockDim.x;
+	
+	int base = idx * totalThreads * 8;
 	int index = base + threadId;
 
 	return ara[index + totalThreads * 7];
 }
+
 
 /**
  * Writes an 8-word big integer to device memory
  */
 __device__ static void writeInt(unsigned int *ara, int idx, const unsigned int x[8])
 {
+	int threadId = blockDim.x * blockIdx.x + threadIdx.x;
 	int totalThreads = gridDim.x * blockDim.x;
 
 	int base = idx * totalThreads * 8;
-
-	int threadId = blockDim.x * blockIdx.x + threadIdx.x;
-
 	int index = base + threadId;
 
-	for (int i = 0; i < 8; i++) {
+	for (int i = 0; i < 8; i++)
+	{
 		ara[index] = x[i];
 		index += totalThreads;
 	}
 }
+
 
 /**
  * Subtraction mod p
@@ -648,7 +647,6 @@ __device__ __forceinline__ static void beginBatchAdd(const unsigned int *px, con
 	// Keep a chain of multiples of the diff, i.e. c[0] = diff0, c[1] = diff0 * diff1,
 	// c[2] = diff2 * diff1 * diff0, etc
 	mulModP(t, inverse);
-
 	writeInt(chain, batchIdx, inverse);
 }
 
@@ -658,19 +656,18 @@ __device__ __forceinline__ static void beginBatchAddWithDouble(const unsigned in
 	unsigned int x[8];
 	readInt(xPtr, i, x);
 
-	if(equal(px, x)) {
+	if(equal(px, x))
 		addModP(py, py, x);
-	} else {
+	else
 		// x = Gx - x
 		subModP(px, x, x);
-	}
 
 	// Keep a chain of multiples of the diff, i.e. c[0] = diff0, c[1] = diff0 * diff1,
 	// c[2] = diff2 * diff1 * diff0, etc
 	mulModP(x, inverse);
-
 	writeInt(chain, batchIdx, inverse);
 }
+
 
 __device__ static void completeBatchAddWithDouble(const unsigned int *px, const unsigned int *py, const unsigned int *xPtr, const unsigned int *yPtr, int i, int batchIdx, unsigned int *chain, unsigned int *inverse, unsigned int newX[8], unsigned int newY[8])
 {

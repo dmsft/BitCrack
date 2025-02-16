@@ -104,40 +104,34 @@ void statusCallback(KeySearchStatus info)
 {
 	std::string speedStr;
 
-	if(info.speed < 0.01) {
+	if (info.speed < 0.01)
 		speedStr = "< 0.01 MKey/s";
-	} else {
+	else
 		speedStr = util::format("%.2f", info.speed) + " MKey/s";
-	}
 
 	std::string totalStr = "(" + util::formatThousands(_config.totalkeys + info.total) + " total)";
-
 	std::string timeStr = "[" + util::formatSeconds((unsigned int)((_config.elapsed + info.totalTime) / 1000)) + "]";
-
 	std::string usedMemStr = util::format((info.deviceMemory - info.freeMemory) /(1024 * 1024));
-
 	std::string totalMemStr = util::format(info.deviceMemory / (1024 * 1024));
-
     std::string targetStr = util::format(info.targets) + " target" + (info.targets > 1 ? "s" : "");
-
 
 	// Fit device name in 16 characters, pad with spaces if less
 	std::string devName = info.deviceName.substr(0, 16);
 	devName += std::string(16 - devName.length(), ' ');
 
     const char *formatStr = NULL;
-
-    if(_config.follow) {
+    if (_config.follow)
         formatStr = "%s %s/%sMB | %s %s %s %s\n";
-    } else {
+    else
         formatStr = "\r%s %s / %sMB | %s %s %s %s";
-    }
-
 	printf(formatStr, devName.c_str(), usedMemStr.c_str(), totalMemStr.c_str(), targetStr.c_str(), speedStr.c_str(), totalStr.c_str(), timeStr.c_str());
 
-    if(_config.checkpointFile.length() > 0) {
+    if (_config.checkpointFile.length() > 0)
+    {
         uint64_t t = util::getSystemTime();
-        if(t - _lastUpdate >= _config.checkpointInterval) {
+    
+        if (t - _lastUpdate >= _config.checkpointInterval)
+        {
             Logger::log(LogLevel::Info, "Checkpoint");
             writeCheckpoint(info.nextKey);
             _lastUpdate = t;
@@ -238,15 +232,8 @@ DeviceParameters getDefaultParameters(const DeviceManager::DeviceInfo &device)
 static KeySearchDevice *getDeviceContext(DeviceManager::DeviceInfo &device, int blocks, int threads, int pointsPerThread)
 {
 #ifdef BUILD_CUDA
-    if(device.type == DeviceManager::DeviceType::CUDA) {
+    if (device.type == DeviceManager::DeviceType::CUDA)
         return new CudaKeySearchDevice((int)device.physicalId, threads, pointsPerThread, blocks);
-    }
-#endif
-
-#ifdef BUILD_OPENCL
-    if(device.type == DeviceManager::DeviceType::OpenCL) {
-        return new CLKeySearchDevice(device.physicalId, threads, pointsPerThread, blocks);
-    }
 #endif
 
     return NULL;
@@ -406,14 +393,12 @@ int run()
         finder.setStatusCallback(statusCallback);
         finder.init();
 
-        if (!_config.targetsFile.empty()) {
+        if (!_config.targetsFile.empty())
             finder.setTargets(_config.targetsFile);
-        } else {
+        else
             finder.setTargets(_config.targets);
-        }
 
         finder.run();
-        delete devctx;
     }
     catch(KeySearchException ex)
     {
@@ -503,7 +488,6 @@ int main(int argc, char **argv)
 	parser.add("-t", "--threads", true);
 	parser.add("-b", "--blocks", true);
 	parser.add("-p", "--points", true);
-	parser.add("-d", "--device", true);
 	parser.add("-c", "--compressed", false);
 	parser.add("-u", "--uncompressed", false);
     parser.add("", "--compression", true);

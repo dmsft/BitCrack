@@ -8,14 +8,12 @@ cuda::CudaDeviceInfo cuda::getDeviceInfo(int device)
 	cudaError_t err = cudaSuccess;
 
 	err = cudaSetDevice(device);
-	if (err) {
+	if (err)
 		throw cuda::CudaException(err);
-	}
 
 	err = cudaGetDeviceProperties(&properties, device);
-	if (err) {
+	if (err)
 		throw cuda::CudaException(err);
-	}
 
 	devInfo.id = device;
 	devInfo.major = properties.major;
@@ -24,40 +22,38 @@ cuda::CudaDeviceInfo cuda::getDeviceInfo(int device)
 	devInfo.mem = properties.totalGlobalMem;
 	devInfo.name = std::string(properties.name);
 
+	// identify amount of cores per SM based on CUDA capability major/minor
 	int cores = 0;
-	switch(devInfo.major) {
-	case 1:
-		cores = 8;
-		break;
-	case 2:
-        if(devInfo.minor == 0) {
-            cores = 32;
-        } else {
-            cores = 48;
-        }
-		break;
-	case 3:
-		cores = 192;
-		break;
-	case 5:
-		cores = 128;
-		break;
-	case 6:
-        if(devInfo.minor == 1 || devInfo.minor == 2) {
-            cores = 128;
-        } else {
-            cores = 64;
-        }
-        break;
-	case 7:
-		cores = 64;
-		break;
-	case 8:
-		cores = 128;
-		break;
-    default:
-        cores = 8;
-        break;
+	switch(devInfo.major)
+	{
+		case 2:
+			cores = 48;
+			if (devInfo.minor == 0)
+				cores = 32;
+			break;
+		
+		case 3:
+			cores = 192;
+			break;
+		
+		case 5:
+		case 8:
+			cores = 128;
+			break;
+		
+		case 6:
+			cores = 64;
+			if (devInfo.minor == 1 || devInfo.minor == 2)
+				cores = 128;
+			break;
+		
+		case 7:
+			cores = 64;
+			break;
+		
+		default:
+			cores = 8;
+			break;
 	}
 	devInfo.cores = cores;
 
