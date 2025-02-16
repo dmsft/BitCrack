@@ -15,6 +15,8 @@ cuda::CudaDeviceInfo cuda::getDeviceInfo(int device)
 	if (err)
 		throw cuda::CudaException(err);
 
+	memcpy((void *) &devInfo.props, (void *) &properties, sizeof(properties));
+
 	devInfo.id = device;
 	devInfo.major = properties.major;
 	devInfo.minor = properties.minor;

@@ -40,13 +40,11 @@ CudaKeySearchDevice::CudaKeySearchDevice(int device, int threads, int pointsPerT
     if (0 != threads)
         num_threads = threads;
     
-    if (num_threads <= 0 || num_threads % 32 != 0) {
-        throw KeySearchException("The number of threads must be a multiple of 32");
-    }
+    // if (num_threads <= 0 || num_threads % 32 != 0)
+    //    throw KeySearchException("The number of threads must be a multiple of 32");
 
-    if (pointsPerThread <= 0) {
+    if (pointsPerThread <= 0)
         throw KeySearchException("At least 1 point per thread required");
-    }
 
     // Specifying blocks on the commandline is depcreated but still supported. If there is no value for
     // blocks, devide the threads evenly among the multi-processors

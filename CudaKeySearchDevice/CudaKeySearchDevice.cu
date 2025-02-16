@@ -4,8 +4,8 @@
 #include "KeySearchTypes.h"
 #include "CudaKeySearchDevice.h"
 #include "ptx.cuh"
-#include "secp256k1.cuh"
 
+#include "secp256k1.cuh"
 #include "sha256.cuh"
 #include "ripemd160.cuh"
 
@@ -139,11 +139,14 @@ __device__ void setResultFound(int idx, bool compressed, unsigned int x[8], unsi
 /// <param name="pointsPerThread"></param>
 /// <param name="compression"></param>
 /// <returns></returns>
-__device__ void doIteration(int pointsPerThread, int compression)
+// __device__ void doIteration(int pointsPerThread, int compression)
+__global__ void keyFinderKernel(int pointsPerThread, int compression)
 {
     unsigned int *chain = _CHAIN[0];
-    unsigned int *xPtr = ec::getXPtr();
-    unsigned int *yPtr = ec::getYPtr();
+    // unsigned int *xPtr = ec::getXPtr();
+    // unsigned int *yPtr = ec::getYPtr();
+    unsigned int *xPtr = ec::_xPtr[0];
+    unsigned int *yPtr = ec::_yPtr[0];
 
     // Multiply together all (_Gx - x) and then invert
     unsigned int inverse[8] = {0,0,0,0,0,0,0,1};
@@ -195,8 +198,8 @@ __device__ void doIteration(int pointsPerThread, int compression)
 __device__ void doIterationWithDouble(int pointsPerThread, int compression)
 {
     unsigned int *chain = _CHAIN[0];
-    unsigned int *xPtr = ec::getXPtr();
-    unsigned int *yPtr = ec::getYPtr();
+    unsigned int *xPtr = ec::_xPtr[0];
+    unsigned int *yPtr = ec::_yPtr[0];
 
     // Multiply together all (_Gx - x) and then invert
     unsigned int inverse[8] = {0,0,0,0,0,0,0,1};
@@ -252,10 +255,10 @@ __device__ void doIterationWithDouble(int pointsPerThread, int compression)
 /**
 * Performs a single iteration
 */
-__global__ void keyFinderKernel(int points, int compression)
-{
-    doIteration(points, compression);
-}
+//__global__ void keyFinderKernel(int points, int compression)
+//{
+//    doIteration(points, compression);
+//}
 
 __global__ void keyFinderKernelWithDouble(int points, int compression)
 {

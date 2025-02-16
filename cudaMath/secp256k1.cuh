@@ -60,20 +60,20 @@ __device__ __forceinline__ bool isInfinity(const unsigned int x[8])
 	return isf;
 }
 
+
 __device__ __forceinline__ static void copyBigInt(const unsigned int src[8], unsigned int dest[8])
 {
-	for(int i = 0; i < 8; i++) {
+	for (int i = 0; i < 8; i++)
 		dest[i] = src[i];
-	}
 }
+
 
 __device__ static bool equal(const unsigned int *a, const unsigned int *b)
 {
 	bool eq = true;
 
-	for(int i = 0; i < 8; i++) {
+	for(int i = 0; i < 8; i++)
 		eq &= (a[i] == b[i]);
-	}
 
 	return eq;
 }

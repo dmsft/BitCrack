@@ -31,7 +31,8 @@ typedef struct _RunConfig{
     // The last key to be checked
     secp256k1::uint256 endKey = secp256k1::N - 1;
 
-    uint64_t statusInterval = 1800;
+    // in milliseconds
+    uint64_t statusInterval = 5000;
     uint64_t checkpointInterval = 60000;
 
     unsigned int threads = 0;
@@ -97,9 +98,11 @@ void resultCallback(KeySearchResult info)
 	Logger::log(LogLevel::Info, logStr);
 }
 
-/**
-Callback to display progress
-*/
+
+/// <summary>
+/// Callback to display progress
+/// </summary>
+/// <param name="info"></param>
 void statusCallback(KeySearchStatus info)
 {
 	std::string speedStr;

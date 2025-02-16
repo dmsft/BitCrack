@@ -7,20 +7,19 @@
 #include "secp256k1.cuh"
 
 
-__constant__ unsigned int *_xPtr[1];
+__constant__ unsigned int *_xPtr[1] = {nullptr};
+__constant__ unsigned int *_yPtr[1] = {nullptr};
 
-__constant__ unsigned int *_yPtr[1];
 
-
-__device__ unsigned int *ec::getXPtr()
-{
-	return _xPtr[0];
-}
-
-__device__ unsigned int *ec::getYPtr()
-{
-	return _yPtr[0];
-}
+//__device__ unsigned int *ec::getXPtr()
+//{
+//	return _xPtr[0];
+//}
+//
+//__device__ unsigned int *ec::getYPtr()
+//{
+//	return _yPtr[0];
+//}
 
 __global__ void multiplyStepKernel(const unsigned int *privateKeys, int pointsPerThread, int step, unsigned int *chain, const unsigned int *gxPtr, const unsigned int *gyPtr);
 
@@ -180,11 +179,11 @@ cudaError_t CudaDeviceKeys::initializePublicKeys(size_t count)
 	if (err)
 		return err;
 
-	err = cudaMemcpyToSymbol(_xPtr, &_devX, sizeof(unsigned int *));
+	err = cudaMemcpyToSymbol(ec::_xPtr, &_devX, sizeof(unsigned int *));
 	if (err)
 		return err;
 
-	err = cudaMemcpyToSymbol(_yPtr, &_devY, sizeof(unsigned int *));
+	err = cudaMemcpyToSymbol(ec::_yPtr, &_devY, sizeof(unsigned int *));
 	
 	return err;
 }
@@ -275,7 +274,7 @@ void CudaDeviceKeys::clearPrivateKeys()
 cudaError_t CudaDeviceKeys::doStep()
 {
 	// run CUDA
-	multiplyStepKernel <<<_blocks, _threads>>>(_devPrivate, _pointsPerThread, _step, _devChain, _devBasePointX, _devBasePointY);
+	multiplyStepKernel <<< _blocks, _threads >>> (_devPrivate, _pointsPerThread, _step, _devChain, _devBasePointX, _devBasePointY);
 
 	// Wait for kernel to complete
     cudaError_t err = cudaDeviceSynchronize();
@@ -295,8 +294,8 @@ __global__ void multiplyStepKernel(
 	const unsigned int *gxPtr,
 	const unsigned int *gyPtr)
 {
-	unsigned int *xPtr = ec::getXPtr();
-	unsigned int *yPtr = ec::getYPtr();
+	unsigned int *xPtr = ec::_xPtr[0];
+	unsigned int *yPtr = ec::_yPtr[0];
 
 	unsigned int gx[8];
 	unsigned int gy[8];
