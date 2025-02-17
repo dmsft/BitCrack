@@ -7,8 +7,11 @@
 #include "secp256k1.cuh"
 
 
-__constant__ unsigned int *_xPtr[1] = {nullptr};
-__constant__ unsigned int *_yPtr[1] = {nullptr};
+namespace ec 
+{
+	__constant__ unsigned int *_xPtr[1];
+	__constant__ unsigned int *_yPtr[1];
+}
 
 
 //__device__ unsigned int *ec::getXPtr()
@@ -157,7 +160,7 @@ cudaError_t CudaDeviceKeys::initializeBasePoints()
 /// <returns></returns>
 cudaError_t CudaDeviceKeys::initializePublicKeys(size_t count)
 {
-	int len = sizeof(unsigned int) * count * 8;
+	size_t len = sizeof(unsigned int) * count * 8;
 
 	// Allocate X array
 	cudaError_t err = cudaMalloc(&_devX, len);
@@ -199,7 +202,7 @@ cudaError_t CudaDeviceKeys::init(
 	_threads = threads;
 	_pointsPerThread = pointsPerThread;
 	size_t count = privateKeys.size();
-	int len = sizeof(unsigned int) * count * 8;
+	size_t len = sizeof(unsigned int) * count * 8;
 
 	// Allocate space for public keys on device
 	cudaError_t err = initializePublicKeys(count);
